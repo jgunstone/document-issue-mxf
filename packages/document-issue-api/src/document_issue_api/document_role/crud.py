@@ -1,76 +1,51 @@
-import logging
-import typing as ty
-
-from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from document_issue_api import models
-from document_issue_api.document_role import schemas
-
-logger = logging.getLogger(__name__)
-
-
-def post_document_role(
-    db: Session,
-    role_id: int,
-    document_id: int,
-) -> schemas.ProjectRoleGet:
-    """Create a new project role.
-
-    Args:
-        db (Session): The session linking to the database
-        project_id (int): The ID of the project
-        role_id (int): The ID of the role
-
-    Returns:
-        models.DocumentRole: The posted project role
-
-    """
-    db_ = models.DocumentRole(role_id=role_id, document_id=document_id)
-    db.add(db_)
-    db.commit()
-    db.refresh(db_)
-    return schemas.ProjectRoleGet.model_validate(db_.role.project_role[0])
+from document_issue_api.common import require
+from document_issue_api.document_role.schemas import DocumentRoleDeleted, DocumentRoleGet
+from document_issue_api.project_role.schemas import ProjectRoleGet
 
 
-def get_document_roles(
-    db: Session,
-    document_id: int,
-) -> ty.List[schemas.ProjectRoleGet]:
-    """Get all project roles.
-
-    Args:
-        db (Session): The session linking to the database
-        project_id (int): The ID of the project
-
-    Returns:
-        models.DocumentRole: The project role
-
-    """
-    db_ = db.query(models.DocumentRole).filter(models.DocumentRole.document_id == document_id).all()
-    return [schemas.ProjectRoleGet.model_validate(_.role.project_role[0]) for _ in db_]
+def assignment_for_document(db, document_id, role_id):
+    document = require(db, models.Document, document_id)
+    require(db, models.Role, role_id)
+    assignment = db.get(models.ProjectRole, (document.project_id, role_id))
+    if assignment is None:
+        raise HTTPException(409, "Assign the role to this document's project first")
+    return assignment
 
 
-def delete_document_role(
-    db: Session,
-    role_id: int,
-    document_id: int,
-) -> schemas.ProjectRoleGet:
-    """Delete a project role.
-
-    Args:
-        db (Session): The session linking to the database
-        project_id (int): The ID of the project
-        role_id (int): The ID of the role
-
-    Returns:
-        models.DocumentRole: The deleted project role
-
-    """
-    db_ = (
-        db.query(models.DocumentRole)
-        .filter(models.DocumentRole.document_id == document_id)
-        .filter(models.DocumentRole.role_id == role_id)
-        .first()
+def role_response(db, selection):
+    assignment = assignment_for_document(db, selection.document_id, selection.role_id)
+    return DocumentRoleGet(
+        **ProjectRoleGet.model_validate(assignment).model_dump(by_alias=False),
+        document_id=selection.document_id,
     )
-    db.delete(db_)
-    return schemas.ProjectRoleGet.model_validate(db_.role.project_role[0])
+
+
+def post_document_role(db, role_id, document_id):
+    assignment_for_document(db, document_id, role_id)
+    row = models.DocumentRole(role_id=role_id, document_id=document_id)
+    db.add(row)
+    db.flush()
+    return role_response(db, row)
+
+
+def get_document_roles(db, document_id):
+    document = require(db, models.Document, document_id)
+    return [
+        role_response(db, row)
+        for row in sorted(document.document_role, key=lambda item: item.role_id)
+    ]
+
+
+def delete_document_role(db, role_id, document_id):
+    row = require(db, models.DocumentRole, (document_id, role_id))
+    assignment = db.get(models.ProjectRole, (row.document.project_id, role_id))
+    response = (
+        role_response(db, row) if assignment is not None
+        else DocumentRoleDeleted(document_id=document_id, role_id=role_id)
+    )
+    db.delete(row)
+    db.flush()
+    return response

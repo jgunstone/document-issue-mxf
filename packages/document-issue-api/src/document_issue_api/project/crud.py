@@ -1,10 +1,10 @@
 import logging
 import typing as ty
 
-from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from document_issue_api import models
+from document_issue_api.common import require, validate_patch
 from document_issue_api.project import schemas
 
 logger = logging.getLogger(__name__)
@@ -21,9 +21,9 @@ def post_project(db: Session, project: schemas.ProjectPost) -> models.Project:
         models.Project: The postd project
 
     """
-    db_ = models.Project(**project.model_dump())
+    db_ = models.Project(**project.model_dump(by_alias=False))
     db.add(db_)
-    db.commit()
+    db.flush()
     db.refresh(db_)
     return db_
 
@@ -39,8 +39,7 @@ def get_project(db: Session, project_id: int) -> models.Project:
         models.Project: The project
 
     """
-    db_ = db.query(models.Project).filter(models.Project.id == project_id).first()
-    return db_
+    return require(db, models.Project, project_id)
 
 
 def get_projects(
@@ -74,9 +73,9 @@ def delete_project(db: Session, project_id: int) -> models.Project:
         models.Project: The deleted project
 
     """
-    db_ = db.query(models.Project).filter(models.Project.id == project_id).first()
+    db_ = require(db, models.Project, project_id)
     db.delete(db_)
-    db.commit()
+    db.flush()
     return db_
 
 
@@ -95,12 +94,11 @@ def patch_project(
         models.Project: The patched project
 
     """
-    db_ = db.query(models.Project).filter(models.Project.id == project_id).first()
-    update_data = project.model_dump(exclude_unset=True)
-    for field in jsonable_encoder(db_):
-        if field in update_data:
-            setattr(db_, field, update_data[field])
-    db.add(db_)
-    db.commit()
+    db_ = require(db, models.Project, project_id)
+    current = {name: getattr(db_, name) for name in schemas.ProjectPost.model_fields}
+    validated = validate_patch(schemas.ProjectPost, current, project)
+    for field, value in validated.model_dump(by_alias=False).items():
+        setattr(db_, field, value)
+    db.flush()
     db.refresh(db_)
     return db_

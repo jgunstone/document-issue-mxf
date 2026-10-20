@@ -116,11 +116,14 @@ class MarkdownDocumentIssue:
 
 
 def check_quarto_version() -> ty.Union[None, str]:
-    """Check if quarto version is at least 0.5.0."""
-    completed_process = subprocess.run(["quarto", "--version"], capture_output=True, check=False)
+    """Return the Quarto version, or None if the executable is unavailable or invalid."""
+    try:
+        completed_process = subprocess.run(["quarto", "--version"], capture_output=True, check=False)
+    except FileNotFoundError:
+        return None
     if completed_process.returncode != 0:
-        return False, ""
-    quarto_version = completed_process.stdout.decode("utf-8")
+        return None
+    quarto_version = completed_process.stdout.decode("utf-8").strip()
     if not re.match(REGEX_SEMVER, quarto_version):
         return None
     return quarto_version
@@ -164,7 +167,7 @@ def run_quarto(
     ]
     if fpth_md_output.suffix == ".ipynb":
         cmd += ["--execute", "true"]
-    return subprocess.run(cmd, check=False)
+    return subprocess.run(cmd, cwd=fpth_md_output.parent, check=True)
 
 
 # generate_document_issue_docx(document_issue, fpth_docx, *, md_content="")
@@ -188,6 +191,8 @@ def generate_document_issue_pdf(
     The orientation can be portrait or landscape.
     The paper size can be A4 or A3.
     """
+    # Resolve before changing directory so relative output paths remain valid.
+    fpth_pdf = fpth_pdf.resolve()
     fpth_md_output = fpth_pdf.parent / (fpth_pdf.stem + ".md")
     with change_dir(fpth_pdf.parent):
         shutil.copy(src=FPTH_FOOTER_LOGO, dst=FPTH_FOOTER_LOGO.name)
@@ -220,13 +225,16 @@ def generate_document_issue_pdf(
             )
         # Create quarto yaml defining the output format, orientation, and paper size
         quarto_config = {
+            # Quarto does not include plain .md files in a project by default.
+            "project": {"type": "default", "render": [fpth_md_output.name]},
             "format": output_format.value,
             "classoption": orientation.value,
             "papersize": paper_size.value,
         }
         if resource_path is not None:
             quarto_config["resource-path"] = [str(p) for p in resource_path]
-        yaml.dump(quarto_config, open("_quarto.yaml", "w"))
+        with open("_quarto.yaml", "w") as config_file:
+            yaml.safe_dump(quarto_config, config_file)
         if output_format == OutputFormat.DOCUMENT_ISSUE_REPORT:
             markdown = MarkdownDocumentIssue(document_issue, is_draft).md_docissue + md_content
         elif output_format == OutputFormat.DOCUMENT_ISSUE_NOTE:

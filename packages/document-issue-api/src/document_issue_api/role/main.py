@@ -1,6 +1,4 @@
-import logging
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from document_issue_api.database import (
@@ -9,7 +7,6 @@ from document_issue_api.database import (
 from document_issue_api.role import crud, schemas
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
 
 # ---------- /role/ -------------------
@@ -19,15 +16,8 @@ logger = logging.getLogger(__name__)
     tags=["Role"],
     summary="Post Role.",
 )
-def post_role(role: schemas.RolePost, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.post_role(db=db, role=role)
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to add Role.\n{err}")
+def post_role(role: schemas.RolePost, db: Session = Depends(get_db, scope="function")):
+    return crud.post_role(db=db, role=role)
 
 
 @router.get(
@@ -36,15 +26,8 @@ def post_role(role: schemas.RolePost, db: Session = Depends(get_db)):
     tags=["Role"],
     summary="Get Role.",
 )
-def get_role(role_id, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.get_role(db=db, role_id=int(role_id))
-        if db_ is None:
-            raise HTTPException(status_code=404, detail=f"Role {role_id} not found.")
-        return db_
-    except Exception as err:
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to get Role.\n{err}")
+def get_role(role_id: int, db: Session = Depends(get_db, scope="function")):
+    return crud.get_role(db=db, role_id=role_id)
 
 
 @router.get(
@@ -53,13 +36,8 @@ def get_role(role_id, db: Session = Depends(get_db)):
     tags=["Role"],
     summary="Get Roles.",
 )
-def get_roles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.get_roles(db=db, skip=skip, limit=limit)
-        return db_
-    except Exception as err:
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to get Roles.\n{err}")
+def get_roles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db, scope="function")):
+    return crud.get_roles(db=db, skip=skip, limit=limit)
 
 
 @router.patch(
@@ -68,15 +46,8 @@ def get_roles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     tags=["Role"],
     summary="Patch Role.",
 )
-def patch_role(role_id, role: schemas.RolePatch, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.patch_role(db=db, role_id=role_id, role=role)
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to patch Role.\n{err}")
+def patch_role(role_id: int, role: schemas.RolePatch, db: Session = Depends(get_db, scope="function")):
+    return crud.patch_role(db=db, role_id=role_id, role=role)
 
 
 @router.delete(
@@ -85,11 +56,5 @@ def patch_role(role_id, role: schemas.RolePatch, db: Session = Depends(get_db)):
     tags=["Role"],
     summary="Delete Role.",
 )
-def delete_role(role_id, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.delete_role(db=db, role_id=role_id)
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to delete Role.\n{err}")
+def delete_role(role_id: int, db: Session = Depends(get_db, scope="function")):
+    return crud.delete_role(db=db, role_id=role_id)

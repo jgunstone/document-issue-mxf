@@ -1,6 +1,6 @@
-from setup_test_client import client, get_db_path
+from setup_test_client import client
 
 
 def test_app_exists():
     assert client
-    assert get_db_path().is_file()
+    assert client.get("/openapi.json").status_code == 200

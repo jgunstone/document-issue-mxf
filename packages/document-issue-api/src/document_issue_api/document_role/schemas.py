@@ -1,28 +1,20 @@
-import typing as ty
-
 from document_issue.basemodel import BaseModel
-from document_issue.person import Person
-from document_issue.project import ProjectBase
-from document_issue.role import Role
-from pydantic import Field
 
-# class ProjectRolePost(BaseModel):
-#     project_id: int = Field(description="id of the project")
-#     role_id: int = Field(description="id of the role")
+from document_issue_api.project_role.schemas import ProjectRoleGet
 
 
-class PersonGet(Person):
-    pass
+class DocumentRoleGet(ProjectRoleGet):
+    """A selected document role and its project-scoped assignment.
+
+    Retains the existing assignment fields while explicitly identifying the document.
+    The aggregate DocumentIssue projects this into the domain's role/initials pair.
+    """
+
+    document_id: int
 
 
-# mapping table
-class ProjectRole(BaseModel):
-    project: ProjectBase
-    role: Role = Field()
-    person: ty.Optional[PersonGet]
+class DocumentRoleDeleted(BaseModel):
+    """Identity-only deletion receipt for a legacy selection with no assignment."""
 
-
-class ProjectRoleGet(ProjectRole):  # ProjectRole
-    project_id: int = Field(description="id of the project")
-    role_id: int = Field(description="id of the role")
-    person_id: ty.Optional[int]
+    document_id: int
+    role_id: int

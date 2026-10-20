@@ -33,7 +33,7 @@ assert not (
 
 
 print(fpth_pdf, fpth_pdf.is_file())
-# >
+#> tests/test-outputs/report-a4-p/06667-MXF-XX-XX-SH-M-20003.pdf True
 
 ```
 

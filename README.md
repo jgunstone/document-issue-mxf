@@ -53,6 +53,21 @@ are used to create the Document Number, this may follow up in the future.
 
 [instructions ->🤓💻](CONTRIBUTING.md)
 
+### Common Pixi commands
+
+- `pixi run demo-api` starts the FastAPI development server with reload enabled.
+  Open <http://127.0.0.1:8000/docs> for Swagger UI; press Ctrl+C to stop.
+  It creates a private temporary database with fictional projects, people, roles,
+  documents and issue histories: try <http://127.0.0.1:8000/document_issue/1>.
+  Demo edits last until restart or code reload. No existing database is changed.
+  For persistent data instead, follow the
+  [API database setup instructions](packages/document-issue-api/README.md#start-a-new-database)
+  and run the normal `document_issue_api.main:app` entry point.
+- `pixi run tests` runs the test suites, independently of the API server.
+- `pixi run build-docs` renders the documentation, then `pixi run open-docs`
+  opens `docs/_site/index.html` with macOS `open` on Apple Silicon or Windows
+  Explorer on WSL. The docs must be built first.
+
 ## Example `document-issue` data
 
 ```yaml

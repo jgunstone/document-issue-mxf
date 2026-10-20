@@ -1,6 +1,4 @@
-import logging
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from document_issue_api.database import (
@@ -9,7 +7,6 @@ from document_issue_api.database import (
 from document_issue_api.person import crud, schemas
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
 
 # ---------- /person/ -------------------
@@ -19,15 +16,8 @@ logger = logging.getLogger(__name__)
     tags=["Person"],
     summary="Post Person.",
 )
-def post_person(person: schemas.PersonPost, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.post_person(db=db, person=person)
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to add Role.\n{err}")
+def post_person(person: schemas.PersonPost, db: Session = Depends(get_db, scope="function")):
+    return crud.post_person(db=db, person=person)
 
 
 @router.get(
@@ -36,17 +26,8 @@ def post_person(person: schemas.PersonPost, db: Session = Depends(get_db)):
     tags=["Person"],
     summary="Get Person.",
 )
-def get_person(person_id: int, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.get_person(db=db, person_id=person_id)
-    except Exception as err:
-        raise HTTPException(status_code=404, detail=f"Failed to get Role.\n{err}")
-    if db_ is None:
-        raise HTTPException(
-            status_code=204,
-            detail=f"Person id ={person_id} does not exist.",
-        )
-    return db_
+def get_person(person_id: int, db: Session = Depends(get_db, scope="function")):
+    return crud.get_person(db=db, person_id=person_id)
 
 
 @router.get(
@@ -55,12 +36,8 @@ def get_person(person_id: int, db: Session = Depends(get_db)):
     tags=["Person"],
     summary="Get People.",
 )
-def get_people(db: Session = Depends(get_db), limit: int = 100, skip: int = 0):
-    try:
-        db_ = crud.get_people(db=db, limit=limit, skip=skip)
-        return db_
-    except Exception as err:
-        raise HTTPException(status_code=404, detail=f"Failed to get People.\n{err}")
+def get_people(db: Session = Depends(get_db, scope="function"), limit: int = 100, skip: int = 0):
+    return crud.get_people(db=db, limit=limit, skip=skip)
 
 
 @router.patch(
@@ -72,16 +49,9 @@ def get_people(db: Session = Depends(get_db), limit: int = 100, skip: int = 0):
 def patch_person(
     person_id: int,
     person: schemas.PersonPatch,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
-    try:
-        db_ = crud.patch_person(db=db, person_id=person_id, person=person)
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to patch Person.\n{err}")
+    return crud.patch_person(db=db, person_id=person_id, person=person)
 
 
 @router.delete(
@@ -90,12 +60,5 @@ def patch_person(
     tags=["Person"],
     summary="Delete Person.",
 )
-def delete_person(person_id: int, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.delete_person(db=db, person_id=person_id)
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to delete Person.\n{err}")
+def delete_person(person_id: int, db: Session = Depends(get_db, scope="function")):
+    return crud.delete_person(db=db, person_id=person_id)

@@ -1,4 +1,6 @@
-from document_issue.role import Role  # , Document, Project, Role
+from document_issue.role import Role
+
+from document_issue_api.common import partial_model
 
 
 class RolePost(Role):
@@ -13,5 +15,4 @@ class RoleGet(RolePost):
     id: int
 
 
-class RolePatch(RolePost):
-    """Role patch schema."""
+RolePatch = partial_model("RolePatch", RolePost)

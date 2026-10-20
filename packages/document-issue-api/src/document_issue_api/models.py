@@ -213,7 +213,7 @@ class Person(Base):
 
     # project_person = relationship("ProjectRole", back_populates="people")
 
-    project_role = relationship("ProjectRole", back_populates="person")
+    project_role = relationship("ProjectRole", back_populates="person", passive_deletes="all")
     UniqueConstraint(initials)
 
 
@@ -228,8 +228,8 @@ class Role(Base):
     role_description = Column(String)
     is_archived = Column(Boolean, default=False)  # use if a role is no longer required but already in use historically.
 
-    document_role = relationship("DocumentRole", back_populates="role")
-    project_role = relationship("ProjectRole", back_populates="role")
+    document_role = relationship("DocumentRole", back_populates="role", passive_deletes="all")
+    project_role = relationship("ProjectRole", back_populates="role", passive_deletes="all")
     UniqueConstraint(role_name)
 
 
@@ -306,23 +306,24 @@ class Document(Base):
     __tablename__ = "document"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("project.id"))
+    project_id = Column(Integer, ForeignKey("project.id"), nullable=False)
 
     name_nomenclature = Column(String)
-    document_code = Column(Integer)
+    document_code = Column(String, nullable=False)
     document_description = Column(String)
+    document_type = Column(String, nullable=False)
     document_source = Column(String)
     paper_size = Column(String)
     scale = Column(String)
     notes = Column(JSON)
     originator = Column(String)
-    date_string_format = Column(String)
-    output_author = Column(Boolean)
-    output_checked_by = Column(Boolean)
+    date_string_format = Column(String, nullable=False)
+    output_author = Column(Boolean, nullable=False)
+    output_checked_by = Column(Boolean, nullable=False)
 
     # is_archived = Column(Boolean, default=False) # TODO: add for document issued but no longer required
 
-    document_role = relationship("DocumentRole", back_populates="document")
+    document_role = relationship("DocumentRole", back_populates="document", cascade="all, delete-orphan")
     issue = relationship(
         "Issue",
         back_populates="document",

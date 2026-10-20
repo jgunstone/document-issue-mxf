@@ -57,4 +57,4 @@ def test_delete_person():
 
     assert r1.status_code == 200
     response = client.get(f"/person/{id_}")
-    assert response.status_code == 204
+    assert response.status_code == 404

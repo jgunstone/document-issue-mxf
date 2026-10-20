@@ -1,98 +1,38 @@
-import logging
-import typing as ty
-
-from document_issue.project_role import PersonRole
-from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from sqlalchemy import select
 
 from document_issue_api import models
+from document_issue_api.common import require
 from document_issue_api.project_role import schemas
 
-logger = logging.getLogger(__name__)
 
-
-def post_project_role(
-    db: Session,
-    project_id: int,
-    role_id: int,
-    person_id: ty.Optional[int] = None,
-) -> models.ProjectRole:
-    """Create a new project role.
-
-    Args:
-        db (Session): The session linking to the database
-        project_id (int): The ID of the project
-        role_id (int): The ID of the role
-
-    Returns:
-        models.ProjectRole: The posted project role
-
-    """
+def post_project_role(db, project_id, role_id, person_id=None):
+    require(db, models.Project, project_id)
+    require(db, models.Role, role_id)
     if person_id is not None:
-        db_ = models.ProjectRole(project_id=project_id, role_id=role_id, person_id=person_id)
-    else:
-        db_ = models.ProjectRole(project_id=project_id, role_id=role_id)
-    db.add(db_)
-    db.commit()
-    db.refresh(db_)
-    return db_
+        require(db, models.Person, person_id)
+    row = models.ProjectRole(project_id=project_id, role_id=role_id, person_id=person_id)
+    db.add(row)
+    db.flush()
+    return row
 
 
-def get_project_role(db: Session, project_id: int, role_id: ty.Optional[int] = None) -> list[models.ProjectRole]:
-    """Get a project role by ID.
-
-    Args:
-        db (Session): The session linking to the database
-        project_id (int): The ID of the project
-        role_id (int, optional): The ID of the role. Defaults to None.
-
-    Returns:
-        models.ProjectRole: The project role
-
-    """
-    db_ = db.query(models.ProjectRole).filter(models.ProjectRole.project_id == project_id)
-    if role_id is not None:
-        db_ = db_.filter(models.ProjectRole.role_id == role_id).all()
-    else:
-        db_ = db_.all()
-    return db_  # # TODO: delete - not in use
+def get_project_roles(db, project_id):
+    project = require(db, models.Project, project_id)
+    return schemas.ProjectRolesGet(project=project, project_roles=project.project_role)
 
 
-def get_project_roles(db: Session, project_id: int) -> schemas.ProjectRolesGet:
-    """Get all project roles.
-
-    Args:
-        db (Session): The session linking to the database
-        project_id (int): The ID of the project
-
-    Returns:
-        models.ProjectRole: The project role
-
-    """
-    db_ = db.query(models.ProjectRole).filter(models.ProjectRole.project_id == project_id).all()
-    project_roles = [PersonRole.model_validate(_, from_attributes=True) for _ in db_]
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
-
-    return schemas.ProjectRolesGet(project=project, project_roles=project_roles)
-
-
-def delete_project_role(db: Session, project_id: int, role_id: int) -> schemas.ProjectRoleGet:
-    """Delete a project role.
-
-    Args:
-        db (Session): The session linking to the database
-        project_id (int): The ID of the project
-        role_id (int): The ID of the role
-
-    Returns:
-        models.ProjectRole: The deleted project role
-
-    """
-    db_ = (
-        db.query(models.ProjectRole)
-        .filter(models.ProjectRole.project_id == project_id)
-        .filter(models.ProjectRole.role_id == role_id)
-        .first()
+def delete_project_role(db, project_id, role_id):
+    row = require(db, models.ProjectRole, (project_id, role_id))
+    selected = db.scalar(
+        select(models.DocumentRole)
+        .join(models.Document)
+        .where(models.Document.project_id == project_id, models.DocumentRole.role_id == role_id)
+        .limit(1),
     )
-    _ = schemas.ProjectRoleGet.model_validate(db_, from_attributes=True)
-    db.delete(db_)
-    return _
+    if selected is not None:
+        raise HTTPException(409, "Remove this role from the project's documents before deleting its assignment")
+    response = schemas.ProjectRoleGet.model_validate(row)
+    db.delete(row)
+    db.flush()
+    return response

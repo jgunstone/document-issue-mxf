@@ -1,10 +1,11 @@
-[project]
+[workspace]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 name = "document-issue"
 
 [dependencies]
-python = ">=3.8"
+# Stay within the Python versions supported by the workspace's native dependencies.
+python = ">=3.11,<3.14"
 rich = ">=13.9.3,<14"
 pytest = "*"
 pre-commit = ">=4.0.1,<5"
@@ -13,7 +14,6 @@ erdantic = "*"
 r-tinytex = "*"
 pandas = "*"
 quarto = "<1.7"
-ruff = "*"
 # mysql-connector-python = "*" # NOTE: conda version older so not using...
 # eralchemy = "*" # TODO: figure out why this isn't working...
 
@@ -26,11 +26,13 @@ document-issue-api = { path = "packages/document-issue-api", editable = true }
 document-issue-ui = { path = "packages/document-issue-ui", editable = true }
 bep = { path = "packages/bep", editable = true }
 pytest-examples = ">=0.0.15, <0.0.16"
+# pytest-examples imports ruff.__main__, which the Conda binary package does not provide.
+ruff = "*"
 mysql-connector-python = "*" # TODO: add mfdb
 # ipyautoui = { path = "../../ipyautoui", editable = true } # DEV ONLY
 
 [feature.document-issue.dependencies]
-python = ">=3.8"
+python = ">=3.11,<3.14"
 pytest = "*"
 
 [feature.document-issue.pypi-dependencies]
@@ -58,12 +60,7 @@ build-docs = { cmd = "quarto render .", cwd = "docs" } #, depends-on = ["test-do
 preview-docs = { cmd = "quarto preview .", cwd = "docs" }
 demo-ui = { cmd = "voila demo.ipynb", cwd = "packages/document-issue-ui" }
 jlab-ui = { cmd = "jupyter lab demo.ipynb", cwd = "packages/document-issue-ui" }
-demo-api = { depends-on = [
-    "test-document-issue",
-    "test-document-issue-quarto",
-    "test-document-issue-io",
-    "test-document-issue-api",
-] }
+demo-api = { cmd = "uvicorn document_issue_api.demo:create_demo_app --factory --reload --app-dir src", cwd = "packages/document-issue-api" }
 tests = { depends-on = [
     "test-document-issue",
     "test-document-issue-quarto",
@@ -73,4 +70,9 @@ tests = { depends-on = [
 lint = "ruff check --fix"
 format = "ruff format"
 get-project-roles = { cmd = "python get-project-roles.py", cwd = "packages/bep/scripts" }
-open-docs = {cmd="/mnt/c/windows/explorer.exe index.html", cwd="docs/_site"} # this will only work on WSL
+
+[target.linux-64.tasks]
+open-docs = { cmd = "/mnt/c/windows/explorer.exe index.html", cwd = "docs/_site" }
+
+[target.osx-arm64.tasks]
+open-docs = { cmd = "open index.html", cwd = "docs/_site" }

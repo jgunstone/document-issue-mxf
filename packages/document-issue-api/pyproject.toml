@@ -24,8 +24,9 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
+    "document-issue",
     "uvicorn",
-    "fastapi",
+    "fastapi>=0.121",
     "pydantic>2",
     "pydantic-settings",
     "sqlalchemy>2",

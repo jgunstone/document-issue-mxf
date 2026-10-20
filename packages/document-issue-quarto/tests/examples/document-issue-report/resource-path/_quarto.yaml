@@ -1,2 +1,6 @@
-resource-path: 
+project:
+  # Plain Markdown must be a project input to inherit resource-path on render.
+  render:
+    - document.md
+resource-path:
   - ./media

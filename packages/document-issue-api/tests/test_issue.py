@@ -1,5 +1,11 @@
 import pytest
-from setup_test_client import client, post_issue
+from setup_test_client import client, post_document, post_issue, post_project
+
+
+@pytest.fixture(autouse=True)
+def document_for_issue():
+    assert post_project().status_code == 200
+    assert post_document().status_code == 200
 
 
 def delete_issue(issue_id=1):

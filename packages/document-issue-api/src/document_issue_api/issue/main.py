@@ -1,6 +1,4 @@
-import logging
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from document_issue_api.database import (
@@ -9,7 +7,6 @@ from document_issue_api.database import (
 from document_issue_api.issue import crud, schemas
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
 
 # ---------- /issue/ -------------------
@@ -21,17 +18,10 @@ logger = logging.getLogger(__name__)
 )
 def post_issue(
     issue: schemas.IssueBasePost,
-    document_id,
-    db: Session = Depends(get_db),
+    document_id: int,
+    db: Session = Depends(get_db, scope="function"),
 ):
-    try:
-        db_ = crud.post_issue(db, document_id, issue)
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to add Issue.\n{err}")
+    return crud.post_issue(db, document_id, issue)
 
 
 @router.get(
@@ -40,15 +30,8 @@ def post_issue(
     tags=["Issue"],
     summary="Get an Issue.",
 )
-def get_issue(issue_id, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.get_issue(db, issue_id)
-        if db_ is None:
-            raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found.")
-        return db_
-    except Exception as err:
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to get Issue.\n{err}")
+def get_issue(issue_id: int, db: Session = Depends(get_db, scope="function")):
+    return crud.get_issue(db, issue_id)
 
 
 @router.patch(
@@ -57,15 +40,8 @@ def get_issue(issue_id, db: Session = Depends(get_db)):
     tags=["Issue"],
     summary="Patch an Issue.",
 )
-def patch_issue(issue_id, issue: schemas.IssueBasePatch, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.patch_issue(db, issue_id, issue)
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to patch Issue.\n{err}")
+def patch_issue(issue_id: int, issue: schemas.IssueBasePatch, db: Session = Depends(get_db, scope="function")):
+    return crud.patch_issue(db, issue_id, issue)
 
 
 @router.delete(
@@ -74,14 +50,5 @@ def patch_issue(issue_id, issue: schemas.IssueBasePatch, db: Session = Depends(g
     tags=["Issue"],
     summary="Delete an Issue.",
 )
-def delete_issue(issue_id, db: Session = Depends(get_db)):
-    try:
-        db_ = crud.delete_issue(db, issue_id)
-        if db_ is None:
-            raise HTTPException(status_code=404, detail=f"Issue {issue_id} not found.")
-        db.commit()
-        return db_
-    except Exception as err:
-        db.rollback()
-        logger.exception(err)
-        raise HTTPException(status_code=404, detail=f"Failed to delete Issue.\n{err}")
+def delete_issue(issue_id: int, db: Session = Depends(get_db, scope="function")):
+    return crud.delete_issue(db, issue_id)

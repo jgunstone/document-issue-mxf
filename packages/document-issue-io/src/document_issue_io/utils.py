@@ -20,11 +20,11 @@ def change_dir(directory):
 
 
 def install_document_issue_quarto_extension():
-    subprocess.run(["quarto", "add", str(FPTH_INSTALL_TAR), "--no-prompt"], check=False)
+    subprocess.run(["quarto", "add", str(FPTH_INSTALL_TAR), "--no-prompt"], check=True)
 
 
 def update_document_issue_quarto_extension():
-    subprocess.run(["quarto", "update", str(FPTH_INSTALL_TAR), "--no-prompt"], check=False)
+    subprocess.run(["quarto", "update", str(FPTH_INSTALL_TAR), "--no-prompt"], check=True)
 
 
 def install_or_update_document_issue_quarto_extensions():

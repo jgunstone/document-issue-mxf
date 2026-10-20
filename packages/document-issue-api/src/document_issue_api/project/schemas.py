@@ -1,5 +1,7 @@
 from document_issue.project import ProjectBase
 
+from document_issue_api.common import partial_model
+
 
 class ProjectPost(ProjectBase):
     pass
@@ -11,5 +13,4 @@ class ProjectGet(ProjectPost):
     id: int
 
 
-class ProjectPatch(ProjectPost):
-    """Project patch schema."""
+ProjectPatch = partial_model("ProjectPatch", ProjectPost)

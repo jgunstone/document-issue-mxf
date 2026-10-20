@@ -1,17 +1,17 @@
 import logging
 import typing as ty
 
-from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from document_issue_api import models
+from document_issue_api.common import require, validate_patch
 from document_issue_api.person import schemas
 
 logger = logging.getLogger(__name__)
 
 
 # role
-def post_person(db: Session, person: schemas.PersonPost) -> models.Role:
+def post_person(db: Session, person: schemas.PersonPost) -> models.Person:
     """Create a new role.
 
     Args:
@@ -22,9 +22,9 @@ def post_person(db: Session, person: schemas.PersonPost) -> models.Role:
         models.Role: The postd role
 
     """
-    db_ = models.Person(**person.model_dump())
+    db_ = models.Person(**person.model_dump(by_alias=False))
     db.add(db_)
-    db.commit()
+    db.flush()
     db.refresh(db_)
     return db_
 
@@ -40,8 +40,7 @@ def get_person(db: Session, person_id: int) -> models.Person:
         models.Role: The role
 
     """
-    db_ = db.query(models.Person).filter(models.Person.id == person_id).first()
-    return db_
+    return require(db, models.Person, person_id)
 
 
 def get_people(db: Session, limit: int = 100, skip: int = 0) -> ty.List[models.Person]:
@@ -71,9 +70,9 @@ def delete_person(db: Session, person_id: int) -> models.Person:
         models.Role: The deleted role
 
     """
-    db_ = db.query(models.Person).filter(models.Person.id == person_id).first()
+    db_ = require(db, models.Person, person_id)
     db.delete(db_)
-    db.commit()
+    db.flush()
     return db_
 
 
@@ -93,13 +92,11 @@ def patch_person(
         models.Role: The patched person
 
     """
-    db_ = db.query(models.Person).filter(models.Person.id == person_id).first()
-    person_data = jsonable_encoder(db_)
-    update_data = person.model_dump(exclude_unset=True)
-    for field in person_data:
-        if field in update_data:
-            setattr(db_, field, update_data[field])
-    db.add(db_)
-    db.commit()
+    db_ = require(db, models.Person, person_id)
+    current = {name: getattr(db_, name) for name in schemas.PersonPost.model_fields}
+    validated = validate_patch(schemas.PersonPost, current, person)
+    for field, value in validated.model_dump(by_alias=False).items():
+        setattr(db_, field, value)
+    db.flush()
     db.refresh(db_)
     return db_

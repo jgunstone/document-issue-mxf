@@ -1,45 +1,13 @@
-import pathlib
-
 from document_issue.issue import Issue
 from document_issue.person import Person
 from document_issue.project import ProjectBase
 from document_issue.role import Role
-from document_issue_api.database import get_db
 from document_issue_api.document.schemas import DocumentBasePost
-from document_issue_api.env import ApiEnv
 from document_issue_api.main import app
-from document_issue_api.models import Base
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-FDIR_TEST = pathlib.Path(__file__).parent
-FPTH_API_TEST_ENV = FDIR_TEST.parent / "api-test.env"
-ENV = ApiEnv(_env_file=FPTH_API_TEST_ENV, _env_file_encoding="utf-8")
-
-# --------------- equivalent to: document_issue_api./database.py ---------------------
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-def get_db_path():
-    return pathlib.Path(ENV.DOCUMENTISSUE_DATABASE_URL.replace("sqlite:///", ""))
-
-
-get_db_path().unlink(missing_ok=True)
-
-p = "sqlite:///./test.db"
-engine = create_engine(ENV.DOCUMENTISSUE_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base.metadata.create_all(bind=engine)
-app.dependency_overrides[get_db] = override_get_db
+# conftest supplies an isolated database for every test; importing helpers is read-only.
 client = TestClient(app)
 
 

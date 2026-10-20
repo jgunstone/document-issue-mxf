@@ -1,12 +1,17 @@
 import logging
 
-from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from document_issue_api import models
+from document_issue_api.common import require, validate_patch
 from document_issue_api.issue import schemas
 
 logger = logging.getLogger(__name__)
+
+
+def storage_data(issue):
+    # JSON mode normalizes enum defaults, but SQLAlchemy Date needs a Python date.
+    return {**issue.model_dump(mode="json", by_alias=False), "date": issue.date}
 
 
 # issue
@@ -21,9 +26,10 @@ def post_issue(db: Session, document_id: int, issue: schemas.IssueBasePost) -> m
         models.Issue: The postd issue
 
     """
-    db_issue = models.Issue(**issue.model_dump(exclude="issue_id") | {"document_id": int(document_id)})
+    require(db, models.Document, document_id)
+    db_issue = models.Issue(**storage_data(issue), document_id=document_id)
     db.add(db_issue)
-    db.commit()
+    db.flush()
     db.refresh(db_issue)
     return db_issue
 
@@ -39,8 +45,7 @@ def get_issue(db: Session, issue_id: int) -> models.Issue:
         models.Issue: The getd issue
 
     """
-    db_issue = db.get(models.Issue, issue_id)
-    return db_issue
+    return require(db, models.Issue, issue_id)
 
 
 def patch_issue(db: Session, issue_id: int, issue: schemas.IssueBasePatch) -> models.Issue:
@@ -55,14 +60,12 @@ def patch_issue(db: Session, issue_id: int, issue: schemas.IssueBasePatch) -> mo
         models.Issue: The patched issue
 
     """
-    db_issue = db.get(models.Issue, issue_id)
-    issue_data = jsonable_encoder(db_issue)
-    update_data = issue.model_dump(exclude_unset=True)
-    for field in issue_data:
-        if field in update_data:
-            setattr(db_issue, field, update_data[field])
-    db.add(db_issue)
-    db.commit()
+    db_issue = require(db, models.Issue, issue_id)
+    current = {name: getattr(db_issue, name) for name in schemas.IssueBasePost.model_fields}
+    validated = validate_patch(schemas.IssueBasePost, current, issue)
+    for field, value in storage_data(validated).items():
+        setattr(db_issue, field, value)
+    db.flush()
     db.refresh(db_issue)
     return db_issue
 
@@ -78,7 +81,7 @@ def delete_issue(db: Session, issue_id: int) -> models.Issue:
         models.Issue: The deleted issue
 
     """
-    db_issue = db.get(models.Issue, issue_id)
+    db_issue = require(db, models.Issue, issue_id)
     db.delete(db_issue)
-    db.commit()
+    db.flush()
     return db_issue

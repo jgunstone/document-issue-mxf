@@ -1,10 +1,10 @@
 import logging
 import typing as ty
 
-from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from document_issue_api import models
+from document_issue_api.common import require, validate_patch
 from document_issue_api.role import schemas
 
 logger = logging.getLogger(__name__)
@@ -22,9 +22,9 @@ def post_role(db: Session, role: schemas.RolePost) -> models.Role:
         models.Role: The postd role
 
     """
-    db_ = models.Role(**role.model_dump())
+    db_ = models.Role(**role.model_dump(by_alias=False))
     db.add(db_)
-    db.commit()
+    db.flush()
     db.refresh(db_)
     return db_
 
@@ -40,8 +40,7 @@ def get_role(db: Session, role_id: int) -> models.Role:
         models.Role: The getd role
 
     """
-    db_ = db.get(models.Role, role_id)
-    return db_
+    return require(db, models.Role, role_id)
 
 
 def get_roles(db: Session, skip: int = 0, limit: int = 100) -> ty.List[models.Role]:
@@ -72,13 +71,12 @@ def patch_role(db: Session, role_id: int, role: schemas.RolePatch) -> models.Rol
         models.Role: The patched role
 
     """
-    db_ = db.get(models.Role, role_id)
-    role_data = jsonable_encoder(db_)
-    update_data = role.model_dump(exclude_unset=True)
-    for field in role_data:
-        if field in update_data:
-            setattr(db_, field, update_data[field])
-    db.commit()
+    db_ = require(db, models.Role, role_id)
+    current = {name: getattr(db_, name) for name in schemas.RolePost.model_fields}
+    validated = validate_patch(schemas.RolePost, current, role)
+    for field, value in validated.model_dump(by_alias=False).items():
+        setattr(db_, field, value)
+    db.flush()
     db.refresh(db_)
     return db_
 
@@ -94,7 +92,7 @@ def delete_role(db: Session, role_id: int) -> models.Role:
         models.Role: The deleted role
 
     """
-    db_ = db.get(models.Role, role_id)
+    db_ = require(db, models.Role, role_id)
     db.delete(db_)
-    db.commit()
+    db.flush()
     return db_
